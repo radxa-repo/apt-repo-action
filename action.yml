@@ -14,10 +14,9 @@ runs:
       uses: actions/checkout@v3
       with:
         repository: radxa-repo/apt-repo-action
-        path: utils
+        path: .apt-repo-action
     - name: Run
       shell: bash
       run: |
-        ls -la
-        dotnet -c Release --project ./utils/apt-repo.csproj run ${{ inputs.token }} ${{ inputs.organization }} ${{ inputs.output }}
-        rm -rf ./utils
+        dotnet run -c Release --project ./.apt-repo-action/apt-repo.csproj -- ${{ inputs.token }} ${{ inputs.organization }} ${{ inputs.output }}
+        rm -rf ./.apt-repo-action
