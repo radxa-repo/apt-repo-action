@@ -1,0 +1,23 @@
+name: 'apt-repo-action'
+description: 'Download GitHub organization to a apt repo'
+inputs:
+  token:
+    required: true
+  organization:
+    required: true
+  output:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: radxa-repo/apt-repo-action
+        path: utils
+    - name: Run
+      shell: bash
+      run: |
+        ls -la
+        dotnet -c Release --project ./utils/apt-repo.csproj run ${{ inputs.token }} ${{ inputs.organization }} ${{ inputs.output }}
+        rm -rf ./utils
