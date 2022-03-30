@@ -5,8 +5,6 @@ inputs:
     required: true
   organization:
     required: true
-  output:
-    required: true
 runs:
   using: "composite"
   steps:
@@ -15,8 +13,16 @@ runs:
       with:
         repository: radxa-repo/apt-repo-action
         path: .apt-repo-action
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: radxa-repo/freight
+        path: .freight
     - name: Run
       shell: bash
       run: |
-        dotnet run -c Release --project ./.apt-repo-action/apt-repo.csproj -- ${{ inputs.token }} ${{ inputs.organization }} ${{ inputs.output }}
-        rm -rf ./.apt-repo-action
+        cd .freight
+        sudo make install
+        cd ..
+        dotnet run -c Release --project .apt-repo-action/apt-repo.csproj -- ${{ inputs.token }} ${{ inputs.organization }}
+        rm -rf .apt-repo-action .freight
