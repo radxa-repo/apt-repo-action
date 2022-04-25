@@ -49,51 +49,52 @@ class Program
 {
     const string LOCAL_PKG_LIST = "pkgs.json";
 
-    static HttpClient http = new HttpClient();
-    static Config conf = new Config();
-    static Dictionary<string, string> pkgs = new Dictionary<string, string>();
+    static HttpClient _http = new HttpClient();
+    static Config _conf = new Config();
+    static Dictionary<string, string> _pkgs = new Dictionary<string, string>();
 
     static async Task<bool> DownloadAsset(ReleaseAsset asset)
     {
         WriteLine($"Downloading {asset.Name}");
         var path = Path.Combine(Path.GetTempPath(), "apt-repo", asset.Name);
-        using (var ds = await http.GetStreamAsync(asset.BrowserDownloadUrl))
+        using (var ds = await _http.GetStreamAsync(asset.BrowserDownloadUrl))
         using (var df = File.OpenWrite(path))
         {
             await ds.CopyToAsync(df);
             await df.FlushAsync();
         }
 
-        var command = "true";
-        conf.Releases.ForEach(i => {
-            command += $" && freight add -e {path} apt/{i}";
-        });
+        var flag = true;
+        await Parallel.ForEachAsync(_conf.Releases, async (release, token) => {
+            using var p = Process.Start(new ProcessStartInfo() {
+                FileName = "/bin/bash",
+                ArgumentList = {"-c", $"freight add -e {path} apt/{release}"},
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            });
 
-        using var p = Process.Start(new ProcessStartInfo() {
-            FileName = "/bin/bash",
-            ArgumentList = {"-c", command},
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        });
-        if (p is null)
-        {
-            WriteLine($"sh failed for {asset.Name}!");
-        }
-        else
-        {
-            await p.WaitForExitAsync();
-            if (p.ExitCode != 0)
+            if (p is null)
             {
-                WriteLine($"freight add failed for {asset.Name}: {(await p.StandardError.ReadToEndAsync()).TrimEnd()}");
+                WriteLine($"sh failed for {asset.Name}!");
             }
             else
             {
-                WriteLine((await p.StandardError.ReadToEndAsync()).TrimEnd());
-                return true;
+                await p.WaitForExitAsync();
+                if (p.ExitCode != 0)
+                {
+                    WriteLine($"freight add failed for {asset.Name}: {(await p.StandardError.ReadToEndAsync()).TrimEnd()}");
+                }
+                else
+                {
+                    WriteLine((await p.StandardError.ReadToEndAsync()).TrimEnd());
+                    return;
+                }
             }
-        }
 
-        return false;
+            flag = false;
+        });
+
+        return flag;
     }
 
     static async Task<int> Main(string[] args)
@@ -117,9 +118,9 @@ class Program
             return -2;
         }
 
-        var conf = await Config.GetConfig();
+        _conf = await Config.GetConfig();
 
-        var pkgs = await JsonHelper.DeserializeJson<Dictionary<string, string>>(LOCAL_PKG_LIST) ?? new Dictionary<string, string>();
+        _pkgs = await JsonHelper.DeserializeJson<Dictionary<string, string>>(LOCAL_PKG_LIST) ?? new Dictionary<string, string>();
 
         var g = new GitHubClient(new ProductHeaderValue("apt-repo-action"));
         g.Credentials = new Credentials(Token);
@@ -129,19 +130,25 @@ class Program
             var release = await g.Repository.Release.GetLatest(repo.Id);
             var assets = release.Assets.Where(x => x.Name.Contains(".deb"));
 
-            if (!pkgs.ContainsKey(repo.Name) || pkgs[repo.Name] != release.Name)
+            if (!_pkgs.ContainsKey(repo.Name) || _pkgs[repo.Name] != release.Name)
             {
+                bool flag = true;
                 await Parallel.ForEachAsync(assets, async (a, token) =>
                 {
-                    if (await DownloadAsset(a))
+                    if (!await DownloadAsset(a))
                     {
-                        pkgs[repo.Name] = release.Name;
+                        flag = false;
                     }
                 });
+
+                if (flag)
+                {
+                    _pkgs[repo.Name] = release.Name;
+                }
             }
         });
 
-        await JsonHelper.SerializeJson(LOCAL_PKG_LIST, pkgs);
+        await JsonHelper.SerializeJson(LOCAL_PKG_LIST, _pkgs);
 
         return 0;
     }
