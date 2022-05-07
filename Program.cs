@@ -8,7 +8,24 @@ class JsonHelper
 {
     public static async Task<T?> DeserializeJson<T>(Stream? s)
     {
-        return s is null || s.Length == 0 ? default(T) : await JsonSerializer.DeserializeAsync<T>(s);
+        if (s is null)
+        {
+            return default(T);
+        }
+
+        try
+        {
+            if (s.Length == 0)
+            {
+                return default(T);
+            }
+        }
+        catch (NotSupportedException)
+        {
+
+        }
+        
+        return await JsonSerializer.DeserializeAsync<T>(s);
     }
 
     public static async Task<T?> DeserializeJson<T>(string FilePath)
