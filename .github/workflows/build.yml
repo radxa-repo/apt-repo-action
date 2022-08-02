@@ -1,0 +1,22 @@
+name: Build
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.cs'
+      - '**/*.csproj'
+
+jobs:
+  prepare_release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        repository: radxa-repo/apt-repo-action
+    - name: Run
+      shell: bash
+      run: |
+        dotnet build
