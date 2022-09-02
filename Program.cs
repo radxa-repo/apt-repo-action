@@ -126,7 +126,15 @@ class Program
 
     public static async Task<Stream> DownloadFile(string url)
     {
-        return await _http.GetStreamAsync(url);
+        try
+        {
+            return await _http.GetStreamAsync(url);
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            WriteLine($"Failed to download '{url}' with error message: {ex.Message}");
+            throw ex;
+        }
     }
 
     public static async Task DownloadFile(string url, string path)
