@@ -208,7 +208,17 @@ class Program
 
         await Parallel.ForEachAsync(await g.Repository.GetAllForOrg(Org), async (repo, token) =>
         {
-            var release = await g.Repository.Release.GetLatest(repo.Id);
+            Release release;
+            try
+            {
+                release = await g.Repository.Release.GetLatest(repo.Id);
+            }
+            catch (Octokit.NotFoundException)
+            {
+                WriteLine($"No release was found in {repo.Name}.");
+                return;
+            }
+
             var assets = release.Assets.Where(x => x.Name.Contains(".deb"));
             var conf = new PkgConfig();
             if (release.Assets.SingleOrDefault(i => i.Name.Equals("pkg.conf")) is ReleaseAsset a)
