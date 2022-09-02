@@ -46,38 +46,32 @@ class JsonHelper
     }
 }
 
-class AptConfig
+class PkgOptions
+{
+    public List<string>? Releases { get; set; }
+}
+
+class PkgConfig : Dictionary<string, PkgOptions>
 {
     const string LOCAL_CONFIG = ".apt-repo.json";
-    
-    public AptConfig()
-    {
-        Releases = new List<string>();
-    }
 
-    public static async Task<AptConfig> GetConfig()
+    public static async Task<PkgConfig> GetConfig()
     {
-        var conf = await JsonHelper.DeserializeJson<AptConfig>(LOCAL_CONFIG);
+        var conf = await JsonHelper.DeserializeJson<PkgConfig>(LOCAL_CONFIG);
         if (conf is null)
         {
-            conf = new AptConfig();
-            conf.Releases.Add("stable");
+            conf = new PkgConfig();
+            var opts = new PkgOptions();
+            opts.Releases = new List<string>();
+            opts.Releases.Add("bullseye");
+            opts.Releases.Add("jammy");
+            conf.Add("*", opts);
             await JsonHelper.SerializeJson(LOCAL_CONFIG, conf);
             WriteLine($"Example config file has been generated. Please adapt it to your environment and try again.");
             Environment.Exit(-3);
         }
         
         return conf;
-    }
-
-    public List<string> Releases { get; set; }
-}
-
-class PkgConfig
-{
-    public PkgConfig()
-    {
-        Exclude = new List<string>();
     }
 
     public static async Task<PkgConfig> GetConfig(ReleaseAsset a)
@@ -93,11 +87,32 @@ class PkgConfig
         return conf;
     }
 
-    public List<string> Exclude { get; set; }
-
-    public bool IsExcluded(ReleaseAsset asset)
+    public PkgOptions? GetOptions(string name)
     {
-        return Exclude.AsParallel().Any(i => Regex.Match(asset.Name, i).Success);
+        PkgOptions? opts = null;
+        this.TryGetValue(name, out opts);
+        return opts;
+    }
+
+    public PkgOptions? GetOptions(ReleaseAsset asset)
+    {
+        return GetOptions(asset.Name);
+    }
+
+    public PkgOptions GetOptions(ReleaseAsset asset, PkgConfig def)
+    {
+        
+        return GetOptions(asset) ?? def.GetOptions("*") ?? new PkgOptions();
+    }
+
+    public List<string>? GetReleases(ReleaseAsset asset, PkgConfig def)
+    {
+        return GetOptions(asset, def).Releases;
+    }
+
+    public bool IsExcluded(ReleaseAsset asset, PkgConfig def)
+    {
+        return GetReleases(asset, def)?.Count == 0;
     }
 }
 
@@ -106,7 +121,7 @@ class Program
     const string LOCAL_PKG_LIST = "pkgs.json";
 
     static HttpClient _http = new HttpClient();
-    static AptConfig _aptconf = new AptConfig();
+    static PkgConfig _aptconf = new PkgConfig();
     static Dictionary<string, string> _pkgs = new Dictionary<string, string>();
 
     public static async Task<Stream> DownloadFile(string url)
@@ -131,7 +146,7 @@ class Program
         await DownloadFile(asset.BrowserDownloadUrl, path);
 
         var flag = true;
-        await Parallel.ForEachAsync(_aptconf.Releases, async (release, token) => {
+        await Parallel.ForEachAsync(_aptconf["*"].Releases ?? new List<string>(), async (release, token) => {
             using var p = Process.Start(new ProcessStartInfo() {
                 FileName = "/bin/bash",
                 ArgumentList = {"-c", $"freight add -e {path} apt/{release}"},
@@ -184,7 +199,7 @@ class Program
             return -2;
         }
 
-        _aptconf = await AptConfig.GetConfig();
+        _aptconf = await PkgConfig.GetConfig();
 
         _pkgs = await JsonHelper.DeserializeJson<Dictionary<string, string>>(LOCAL_PKG_LIST) ?? new Dictionary<string, string>();
 
@@ -206,7 +221,7 @@ class Program
                 bool flag = true;
                 await Parallel.ForEachAsync(assets, async (a, token) =>
                 {
-                    if (!conf.IsExcluded(a) && !await DownloadAsset(a))
+                    if (!conf.IsExcluded(a, _aptconf) && !await DownloadAsset(a))
                     {
                         flag = false;
                     }
