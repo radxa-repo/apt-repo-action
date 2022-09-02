@@ -147,14 +147,15 @@ class Program
         }
     }
 
-    static async Task<bool> DownloadAsset(ReleaseAsset asset)
+    static async Task<bool> DownloadAsset(ReleaseAsset asset, PkgConfig conf)
     {
         WriteLine($"Downloading {asset.Name}");
         var path = Path.Combine(Path.GetTempPath(), "apt-repo", asset.Name);
         await DownloadFile(asset.BrowserDownloadUrl, path);
 
         var flag = true;
-        await Parallel.ForEachAsync(_aptconf["*"].Releases ?? new List<string>(), async (release, token) => {
+        await Parallel.ForEachAsync(conf.GetReleases(asset, _aptconf) ?? new List<string>(), async (release, token) =>
+        {
             using var p = Process.Start(new ProcessStartInfo() {
                 FileName = "/bin/bash",
                 ArgumentList = {"-c", $"freight add -e {path} apt/{release}"},
@@ -239,7 +240,7 @@ class Program
                 bool flag = true;
                 await Parallel.ForEachAsync(assets, async (a, token) =>
                 {
-                    if (!conf.IsExcluded(a, _aptconf) && !await DownloadAsset(a))
+                    if (!conf.IsExcluded(a, _aptconf) && !await DownloadAsset(a, conf))
                     {
                         flag = false;
                     }
