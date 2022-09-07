@@ -46,12 +46,12 @@ class JsonHelper
     }
 }
 
-class PkgOptions
+class PkgOption
 {
     public List<string>? Releases { get; set; }
 }
 
-class PkgConfig : Dictionary<string, PkgOptions>
+class PkgConfig : Dictionary<string, PkgOption>
 {
     const string LOCAL_CONFIG = ".apt-repo.json";
 
@@ -61,7 +61,7 @@ class PkgConfig : Dictionary<string, PkgOptions>
         if (conf is null)
         {
             conf = new PkgConfig();
-            var opts = new PkgOptions();
+            var opts = new PkgOption();
             opts.Releases = new List<string>();
             opts.Releases.Add("bullseye");
             opts.Releases.Add("jammy");
@@ -87,27 +87,27 @@ class PkgConfig : Dictionary<string, PkgOptions>
         return conf;
     }
 
-    public PkgOptions? GetOptions(string name)
+    public PkgOption? GetOption(string name)
     {
-        PkgOptions? opts = null;
+        PkgOption? opts = null;
         this.TryGetValue(name, out opts);
         return opts;
     }
 
-    public PkgOptions? GetOptions(ReleaseAsset asset)
+    public PkgOption? GetOption(ReleaseAsset asset)
     {
-        return GetOptions(asset.Name);
+        return GetOption(asset.Name);
     }
 
-    public PkgOptions GetOptions(ReleaseAsset asset, PkgConfig def)
+    public PkgOption GetOption(ReleaseAsset asset, PkgConfig def)
     {
         
-        return GetOptions(asset) ?? def.GetOptions("*") ?? new PkgOptions();
+        return GetOption(asset) ?? def.GetOption("*") ?? new PkgOption();
     }
 
     public List<string>? GetReleases(ReleaseAsset asset, PkgConfig def)
     {
-        return GetOptions(asset, def).Releases;
+        return GetOption(asset, def).Releases;
     }
 
     public bool IsExcluded(ReleaseAsset asset, PkgConfig def)
