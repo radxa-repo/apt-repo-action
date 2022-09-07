@@ -49,6 +49,7 @@ class JsonHelper
 class PkgOption
 {
     public List<string>? Releases { get; set; }
+    public string? Subpool { get; set; }
 }
 
 class PkgConfig : Dictionary<string, PkgOption>
@@ -154,11 +155,12 @@ class Program
         await DownloadFile(asset.BrowserDownloadUrl, path);
 
         var flag = true;
-        await Parallel.ForEachAsync(conf.GetReleases(asset, _aptconf) ?? new List<string>(), async (release, token) =>
+        var opt = conf.GetOption(asset, _aptconf);
+        await Parallel.ForEachAsync(opt.Releases ?? new List<string>(), async (release, token) =>
         {
             using var p = Process.Start(new ProcessStartInfo() {
                 FileName = "/bin/bash",
-                ArgumentList = {"-c", $"freight add -e {path} apt/{release}"},
+                ArgumentList = {"-c", $"freight add -e {path} {(opt.Subpool is null ? string.Empty : $"-s {opt.Subpool}")} apt/{release}"},
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             });
