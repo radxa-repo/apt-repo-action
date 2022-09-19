@@ -41,8 +41,9 @@ class JsonHelper
 
     public static async Task SerializeJson<T>(string FilePath, T obj)
     {
-        using var f = File.Open(FilePath, System.IO.FileMode.OpenOrCreate);
+        using var f = File.Open(FilePath, System.IO.FileMode.Create);
         await SerializeJson(f, obj);
+        await f.FlushAsync();
     }
 }
 
