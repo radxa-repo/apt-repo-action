@@ -98,13 +98,13 @@ class PkgConfig : Dictionary<string, PkgOption>
 
     public PkgOption? GetOption(ReleaseAsset asset)
     {
-        return GetOption(asset.Name);
+        return GetOption(asset.Name) ?? GetOption("*");
     }
 
     public PkgOption GetOption(ReleaseAsset asset, PkgConfig def)
     {
         
-        return GetOption(asset) ?? def.GetOption("*") ?? new PkgOption();
+        return GetOption(asset) ?? def.GetOption(asset) ?? new PkgOption();
     }
 
     public List<string>? GetReleases(ReleaseAsset asset, PkgConfig def)
