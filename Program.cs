@@ -159,8 +159,14 @@ class Program
 
         var flag = true;
         var opt = conf.GetOption(asset, _aptconf);
+        var accepted_releases = _aptconf.GetOption("*")?.Releases;
         await Parallel.ForEachAsync(opt.Releases ?? new List<string>(), async (release, token) =>
         {
+            if ( (!accepted_releases?.Any(i => release.EndsWith(i))) ?? false)
+            {
+                return;
+            }
+
             using var p = Process.Start(new ProcessStartInfo() {
                 FileName = "/bin/bash",
                 ArgumentList = {"-c", $"freight add -e {path} {(opt.Subpool is null ? string.Empty : $"-s {opt.Subpool}")} apt/{release}"},
