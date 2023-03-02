@@ -121,10 +121,12 @@ class PkgConfig : Dictionary<string, PkgOption>
 class Program
 {
     const string LOCAL_PKG_LIST = "pkgs.json";
+    const string LOCAL_PKG_LOCK = "pkgs.lock";
 
     static HttpClient _http = new HttpClient();
     static PkgConfig _aptconf = new PkgConfig();
     static Dictionary<string, string> _pkgs = new Dictionary<string, string>();
+    static Dictionary<string, string> _lock = new Dictionary<string, string>();
 
     public static async Task<Stream> DownloadFile(string url)
     {
@@ -214,6 +216,7 @@ class Program
         _aptconf = await PkgConfig.GetConfig();
 
         _pkgs = await JsonHelper.DeserializeJson<Dictionary<string, string>>(LOCAL_PKG_LIST) ?? new Dictionary<string, string>();
+        _lock = await JsonHelper.DeserializeJson<Dictionary<string, string>>(LOCAL_PKG_LOCK) ?? new Dictionary<string, string>();
 
         var g = new GitHubClient(new ProductHeaderValue("apt-repo-action"));
         g.Credentials = new Credentials(Token);
@@ -221,9 +224,17 @@ class Program
         await Parallel.ForEachAsync(await g.Repository.GetAllForOrg(Org), async (repo, token) =>
         {
             Release release;
+
             try
             {
-                release = await g.Repository.Release.GetLatest(repo.Id);
+                if (_lock.ContainsKey(repo.Name))
+                {
+                    release = await g.Repository.Release.Get(repo.Id, _lock[repo.Name]);
+                }
+                else
+                {
+                    release = await g.Repository.Release.GetLatest(repo.Id);
+                }
             }
             catch (Octokit.NotFoundException)
             {
@@ -238,7 +249,7 @@ class Program
                 conf = await PkgConfig.GetConfig(a);
             }
 
-            if (!_pkgs.ContainsKey(repo.Name) || _pkgs[repo.Name] != release.Name)
+            if (!_pkgs.ContainsKey(repo.Name) || _pkgs[repo.Name] != release.TagName)
             {
                 bool flag = true;
                 await Parallel.ForEachAsync(assets, async (a, token) =>
@@ -251,7 +262,7 @@ class Program
 
                 if (flag)
                 {
-                    _pkgs[repo.Name] = release.Name;
+                    _pkgs[repo.Name] = release.TagName;
                 }
             }
         });
