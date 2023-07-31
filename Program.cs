@@ -25,7 +25,12 @@ class JsonHelper
 
         }
         
-        return await JsonSerializer.DeserializeAsync<T>(s);
+        var options = new JsonSerializerOptions()
+        {
+            AllowTrailingCommas = true
+        };
+        
+        return await JsonSerializer.DeserializeAsync<T>(s, options);
     }
 
     public static async Task<T?> DeserializeJson<T>(string FilePath)
