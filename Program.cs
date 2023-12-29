@@ -233,7 +233,7 @@ class Program
         g.Credentials = new Credentials(Token);
 
         await Parallel.ForEachAsync(await g.Repository.GetAllForOrg(Org), async (repo, token) =>
-        {   
+        {
             if (repo.Archived)
             {
                 WriteLine($"{repo.Name} is archived.");
