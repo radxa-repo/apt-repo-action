@@ -234,12 +234,6 @@ class Program
 
         await Parallel.ForEachAsync(await g.Repository.GetAllForOrg(Org), async (repo, token) =>
         {
-            if (repo.Archived)
-            {
-                WriteLine($"{repo.Name} is archived.");
-                return;
-            }
-            
             Release release;
 
             try
@@ -250,6 +244,11 @@ class Program
                 }
                 else
                 {
+                    if (repo.Archived)
+                    {
+                        WriteLine($"{repo.Name} is archived.");
+                        return;
+                    }
                     release = await g.Repository.Release.GetLatest(repo.Id);
                 }
             }
