@@ -13,9 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        repository: radxa-repo/apt-repo-action
+      uses: actions/checkout@v4
     - name: Run
       shell: bash
       run: |
