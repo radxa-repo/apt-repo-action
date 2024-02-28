@@ -9,12 +9,12 @@ runs:
   using: "composite"
   steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: radxa-repo/apt-repo-action
         path: .apt-repo-action
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: radxa-repo/freight
         path: .freight
