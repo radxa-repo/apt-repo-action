@@ -240,6 +240,11 @@ class Program
             {
                 if (_lock.ContainsKey(repo.Name))
                 {
+                    if (_lock[repo.Name] == "skip")
+                    {
+                        WriteLine($"{repo.Name} is skipped.");
+                        return;
+                    }
                     release = await g.Repository.Release.Get(repo.Id, _lock[repo.Name]);
                 }
                 else
